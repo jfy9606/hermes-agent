@@ -1,6 +1,9 @@
 services:
   hermes:
-    image: nousresearch/hermes-agent:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hermes-agent:local
     container_name: hermes
     restart: unless-stopped
     command: gateway run
@@ -22,7 +25,10 @@ services:
           cpus: "2.0"
 
   dashboard:
-    image: nousresearch/hermes-agent:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hermes-agent:local
     container_name: hermes-dashboard
     restart: unless-stopped
     command: dashboard --host 0.0.0.0 --insecure

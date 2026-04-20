@@ -84,6 +84,182 @@ For the full command lists, see the [CLI guide](https://hermes-agent.nousresearc
 
 ---
 
+## Docker
+
+Hermes Agent 支持 Docker 部署，可以在任何支持 Docker 的环境中运行。
+
+### 快速启动（使用本地构建的镜像）
+
+```bash
+# 克隆仓库（如果尚未克隆）
+git clone https://github.com/NousResearch/hermes-agent.git
+cd hermes-agent
+
+# 一键构建并启动所有服务
+docker compose up -d --build
+```
+
+这将自动：
+1. 从本地 `Dockerfile` 构建 Docker 镜像
+2. 启动 Hermes Gateway 服务（端口 8642）
+3. 启动 Web Dashboard 服务（端口 9119）
+
+### 手动构建镜像
+
+如果需要单独构建镜像：
+
+```bash
+# 构建镜像（使用项目根目录下的 Dockerfile）
+docker build -t hermes-agent:local .
+
+# 或者指定 Dockerfile 路径
+docker build -f Dockerfile -t hermes-agent:local .
+```
+
+### 使用 docker-compose
+
+**一键启动（推荐）：**
+
+```bash
+# 构建并后台启动所有服务
+docker compose up -d --build
+
+# 查看服务状态
+docker compose ps
+
+# 查看日志
+docker compose logs -f
+
+# 停止所有服务
+docker compose down
+
+# 停止并删除数据卷（⚠️ 会删除配置和数据）
+docker compose down -v
+```
+
+**仅启动特定服务：**
+
+```bash
+# 仅启动 gateway
+docker compose up -d --build hermes
+
+# 仅启动 dashboard
+docker compose up -d --build dashboard
+```
+
+### 手动运行容器
+
+如果不使用 docker-compose，可以手动运行：
+
+```bash
+# 运行 Hermes Gateway
+docker run -d \
+  --name hermes \
+  --restart unless-stopped \
+  -p 8642:8642 \
+  -v ~/.hermes:/opt/data \
+  hermes-agent:local \
+  gateway run
+
+# 运行 Web Dashboard
+docker run -d \
+  --name hermes-dashboard \
+  --restart unless-stopped \
+  -p 9119:9119 \
+  -v ~/.hermes:/opt/data \
+  -e GATEWAY_HEALTH_URL=http://hermes:8642 \
+  hermes-agent:local \
+  dashboard --host 0.0.0.0 --insecure
+```
+
+### 配置说明
+
+#### 环境变量
+
+创建 `.env` 文件或在 `docker-compose.yml` 中取消注释环境变量配置：
+
+```bash
+# .env 文件示例
+ANTHROPIC_API_KEY=your_anthropic_key
+OPENAI_API_KEY=your_openai_key
+TELEGRAM_BOT_TOKEN=your_telegram_token
+```
+
+#### 数据持久化
+
+默认情况下，Docker 容器会将数据存储在 `~/.hermes:/opt/data` 卷中。这包括：
+- 配置文件 (`config.yaml`)
+- API 密钥 (`.env`)
+- 会话历史
+- 记忆和技能
+- 数据库文件
+
+#### 资源限制
+
+`docker-compose.yml` 已预设资源限制：
+- **Gateway**: 最大 4GB 内存, 2 CPU
+- **Dashboard**: 最大 512MB 内存, 0.5 CPU
+
+可根据需要调整 `deploy.resources.limits` 配置。
+
+### 开发模式
+
+在开发时，可以挂载源代码目录以实现热重载：
+
+```bash
+# 创建 docker-compose.override.yml 用于开发
+cat > docker-compose.override.yml << 'EOF'
+services:
+  hermes:
+    volumes:
+      - .:/opt/hermes:ro
+      - ~/.hermes:/opt/data
+    environment:
+      - PYTHONUNBUFFERED=1
+EOF
+
+# 使用 override 配置启动
+docker compose up -d --build
+```
+
+### 故障排除
+
+**常见问题：**
+
+1. **权限错误**
+   ```bash
+   # 确保 ~/.hermes 目录存在且权限正确
+   mkdir -p ~/.hermes
+   chmod 755 ~/.hermes
+   ```
+
+2. **端口冲突**
+   ```bash
+   # 检查端口是否被占用
+   lsof -i :8642
+   lsof -i :9119
+   
+   # 或修改 docker-compose.yml 中的端口映射
+   ```
+
+3. **构建失败**
+   ```bash
+   # 清理 Docker 构建缓存后重新构建
+   docker builder prune -f
+   docker compose build --no-cache
+   ```
+
+4. **查看容器日志**
+   ```bash
+   # 实时查看 gateway 日志
+   docker compose logs -f hermes
+   
+   # 查看 dashboard 日志
+   docker compose logs -f dashboard
+   ```
+
+---
+
 ## Documentation
 
 All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**:
