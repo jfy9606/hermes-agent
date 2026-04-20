@@ -13,11 +13,15 @@ services:
       - ~/.hermes:/opt/data
     networks:
       - hermes-net
-    # Uncomment to forward specific env vars instead of using .env file:
-    # environment:
+    environment:
+      - API_SERVER_ENABLED=true
+    # Uncomment to forward additional env vars instead of using .env file:
     #   - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     #   - OPENAI_API_KEY=${OPENAI_API_KEY}
     #   - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    env_file:
+      - path: ~/.hermes/.env
+        required: false
     deploy:
       resources:
         limits:

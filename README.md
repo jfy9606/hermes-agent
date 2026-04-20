@@ -152,12 +152,14 @@ docker compose up -d --build dashboard
 如果不使用 docker-compose，可以手动运行：
 
 ```bash
-# 运行 Hermes Gateway
+# 运行 Hermes Gateway（必须启用 API Server 以提供健康检查端点）
 docker run -d \
   --name hermes \
   --restart unless-stopped \
   -p 8642:8642 \
   -v ~/.hermes:/opt/data \
+  -e API_SERVER_ENABLED=true \
+  --env-file ~/.hermes/.env \
   hermes-agent:local \
   gateway run
 
@@ -172,18 +174,32 @@ docker run -d \
   dashboard --host 0.0.0.0 --insecure
 ```
 
+> **⚠️ 重要：** `API_SERVER_ENABLED=true` 是必须的。它启用 Gateway 内置的 API Server 平台，在 8642 端口提供 `/health` 健康检查端点。Dashboard 通过此端点检测 Gateway 是否运行。如果不设置此变量，Dashboard 将始终显示 "gateway not running"。
+
 ### 配置说明
 
 #### 环境变量
 
-创建 `.env` 文件或在 `docker-compose.yml` 中取消注释环境变量配置：
+`docker-compose.yml` 已配置自动加载 `~/.hermes/.env` 文件。将 API 密钥写入该文件即可：
 
 ```bash
-# .env 文件示例
+# ~/.hermes/.env 文件示例
 ANTHROPIC_API_KEY=your_anthropic_key
 OPENAI_API_KEY=your_openai_key
 TELEGRAM_BOT_TOKEN=your_telegram_token
 ```
+
+也可以直接在 `docker-compose.yml` 的 `environment` 部分添加环境变量。
+
+#### 关键环境变量
+
+| 变量 | 必需 | 说明 |
+|------|------|------|
+| `API_SERVER_ENABLED` | ✅ 是 | 必须设为 `true`，启用 API Server 平台以提供健康检查端点 |
+| `ANTHROPIC_API_KEY` | 推荐 | Anthropic API 密钥（或其他 LLM 提供商的密钥） |
+| `TELEGRAM_BOT_TOKEN` | 可选 | Telegram 机器人 Token（启用 Telegram 平台） |
+| `DISCORD_BOT_TOKEN` | 可选 | Discord 机器人 Token（启用 Discord 平台） |
+| `SLACK_BOT_TOKEN` | 可选 | Slack 机器人 Token（启用 Slack 平台） |
 
 #### 数据持久化
 
