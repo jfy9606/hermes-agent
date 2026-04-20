@@ -416,6 +416,7 @@ class TestDiscordPlayTtsSkip:
         adapter.platform = Platform.DISCORD
         adapter.config = config
         adapter._voice_clients = {}
+        adapter._voice_locks = {}
         adapter._voice_text_channels = {}
         adapter._voice_sources = {}
         adapter._voice_timeout_tasks = {}
@@ -758,7 +759,7 @@ class TestVoiceChannelCommands:
         result = await runner._handle_voice_channel_join(event)
 
         assert "voice dependencies are missing" in result.lower()
-        assert "hermes-agent[messaging]" in result
+        assert "PyNaCl" in result
 
     # -- _handle_voice_channel_leave --
 
@@ -931,6 +932,7 @@ class TestDiscordVoiceChannelMethods:
         adapter.config = config
         adapter._client = MagicMock()
         adapter._voice_clients = {}
+        adapter._voice_locks = {}
         adapter._voice_text_channels = {}
         adapter._voice_sources = {}
         adapter._voice_timeout_tasks = {}
@@ -1712,6 +1714,7 @@ class TestVoiceTimeoutCleansRunnerState:
         adapter.platform = Platform.DISCORD
         adapter.config = config
         adapter._voice_clients = {}
+        adapter._voice_locks = {}
         adapter._voice_text_channels = {}
         adapter._voice_sources = {}
         adapter._voice_timeout_tasks = {}
@@ -1802,6 +1805,7 @@ class TestPlaybackTimeout:
         adapter.platform = Platform.DISCORD
         adapter.config = config
         adapter._voice_clients = {}
+        adapter._voice_locks = {}
         adapter._voice_text_channels = {}
         adapter._voice_sources = {}
         adapter._voice_timeout_tasks = {}
@@ -1983,6 +1987,7 @@ class TestVoiceChannelAwareness:
         config.token = "fake-token"
         adapter = object.__new__(DiscordAdapter)
         adapter._voice_clients = {}
+        adapter._voice_locks = {}
         adapter._voice_text_channels = {}
         adapter._voice_sources = {}
         adapter._voice_receivers = {}
@@ -2453,6 +2458,7 @@ class TestVoiceTTSPlayback:
         adapter.platform = Platform.DISCORD
         adapter.config = config
         adapter._voice_clients = {}
+        adapter._voice_locks = {}
         adapter._voice_text_channels = {}
         adapter._voice_sources = {}
         adapter._voice_receivers = {}
@@ -2633,6 +2639,7 @@ class TestUDPKeepalive:
         adapter.platform = Platform.DISCORD
         adapter.config = config
         adapter._voice_clients = {}
+        adapter._voice_locks = {}
         adapter._voice_text_channels = {}
         adapter._voice_sources = {}
         adapter._voice_receivers = {}
