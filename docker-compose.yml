@@ -1,32 +1,43 @@
+#
+# docker-compose.yml for Hermes Agent
+#
+# Usage:
+#   docker compose up -d --build    # 本地构建并启动
+#   docker compose down             # 停止所有服务
+#
+# Set HERMES_UID / HERMES_GID to the host user that owns ~/.hermes so
+# files created inside the container stay readable/writable on the host.
+# The entrypoint remaps the internal `hermes` user to these values via
+# usermod/groupmod + gosu.
+#
+# Security notes:
+#   - The dashboard service binds to 127.0.0.1 by default. It stores API
+#     keys; exposing it on LAN without auth is unsafe. If you want remote
+#     access, use an SSH tunnel or put it behind a reverse proxy that
+#     adds authentication — do NOT pass --insecure --host 0.0.0.0.
+#   - The gateway's API server (port 8642) provides /health for the dashboard.
+#     See docs/user-guide/api-server.md before exposing it publicly.
+#
+
 services:
-  hermes:
+  gateway:
     build:
       context: .
       dockerfile: Dockerfile
     image: hermes-agent:local
     container_name: hermes
     restart: unless-stopped
-    command: gateway run
-    ports:
-      - "8642:8642"
+    network_mode: host
     volumes:
       - ~/.hermes:/opt/data
-    networks:
-      - hermes-net
     environment:
+      - HERMES_UID=${HERMES_UID:-10000}
+      - HERMES_GID=${HERMES_GID:-10000}
       - API_SERVER_ENABLED=true
-    # Uncomment to forward additional env vars instead of using .env file:
-    #   - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    #   - OPENAI_API_KEY=${OPENAI_API_KEY}
-    #   - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     env_file:
       - path: ~/.hermes/.env
         required: false
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-          cpus: "2.0"
+    command: ["gateway", "run"]
 
   dashboard:
     build:
@@ -35,23 +46,14 @@ services:
     image: hermes-agent:local
     container_name: hermes-dashboard
     restart: unless-stopped
-    command: dashboard --host 0.0.0.0 --insecure
-    ports:
-      - "9119:9119"
+    network_mode: host
+    depends_on:
+      - gateway
     volumes:
       - ~/.hermes:/opt/data
     environment:
-      - GATEWAY_HEALTH_URL=http://hermes:8642
-    networks:
-      - hermes-net
-    depends_on:
-      - hermes
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: "0.5"
-
-networks:
-  hermes-net:
-    driver: bridge
+      - HERMES_UID=${HERMES_UID:-10000}
+      - HERMES_GID=${HERMES_GID:-10000}
+      - GATEWAY_HEALTH_URL=http://localhost:8642
+    # Localhost-only. For remote access, tunnel via `ssh -L 9119:localhost:9119`.
+    command: ["dashboard", "--host", "127.0.0.1", "--no-open"]

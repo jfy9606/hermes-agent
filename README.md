@@ -76,7 +76,7 @@ Hermes has two entry points: start the terminal UI with `hermes`, or run the gat
 | Set a personality | `/personality [name]` | `/personality [name]` |
 | Retry or undo the last turn | `/retry`, `/undo` | `/retry`, `/undo` |
 | Compress context / check usage | `/compress`, `/usage`, `/insights [--days N]` | `/compress`, `/usage`, `/insights [days]` |
-| Browse skills | `/skills` or `/<skill-name>` | `/skills` or `/<skill-name>` |
+| Browse skills | `/skills` or `/<skill-name>` | `/<skill-name>` |
 | Interrupt current work | `Ctrl+C` or send a new message | `/stop` or send a new message |
 | Platform-specific status | `/platforms` | `/status`, `/sethome` |
 
@@ -101,8 +101,8 @@ docker compose up -d --build
 
 这将自动：
 1. 从本地 `Dockerfile` 构建 Docker 镜像
-2. 启动 Hermes Gateway 服务（端口 8642）
-3. 启动 Web Dashboard 服务（端口 9119）
+2. 启动 Hermes Gateway 服务（端口 8642，API Server 健康检查端点）
+3. 启动 Web Dashboard 服务（端口 9119，仅监听 localhost）
 
 ### 手动构建镜像
 
@@ -141,7 +141,7 @@ docker compose down -v
 
 ```bash
 # 仅启动 gateway
-docker compose up -d --build hermes
+docker compose up -d --build gateway
 
 # 仅启动 dashboard
 docker compose up -d --build dashboard
@@ -156,25 +156,27 @@ docker compose up -d --build dashboard
 docker run -d \
   --name hermes \
   --restart unless-stopped \
-  -p 8642:8642 \
+  --network host \
   -v ~/.hermes:/opt/data \
   -e API_SERVER_ENABLED=true \
   --env-file ~/.hermes/.env \
   hermes-agent:local \
   gateway run
 
-# 运行 Web Dashboard
+# 运行 Web Dashboard（默认绑定 127.0.0.1:9119）
 docker run -d \
   --name hermes-dashboard \
   --restart unless-stopped \
-  -p 9119:9119 \
+  --network host \
   -v ~/.hermes:/opt/data \
-  -e GATEWAY_HEALTH_URL=http://hermes:8642 \
+  -e GATEWAY_HEALTH_URL=http://localhost:8642 \
   hermes-agent:local \
-  dashboard --host 0.0.0.0 --insecure
+  dashboard --host 127.0.0.1 --no-open
 ```
 
 > **⚠️ 重要：** `API_SERVER_ENABLED=true` 是必须的。它启用 Gateway 内置的 API Server 平台，在 8642 端口提供 `/health` 健康检查端点。Dashboard 通过此端点检测 Gateway 是否运行。如果不设置此变量，Dashboard 将始终显示 "gateway not running"。
+
+> **🔒 安全提示：** Dashboard 默认绑定 `127.0.0.1:9119`（仅本机访问），因为它存储 API 密钥。如需远程访问，请使用 SSH 隧道（`ssh -L 9119:localhost:9119`）或反向代理添加认证层。
 
 ### 配置说明
 
@@ -196,6 +198,8 @@ TELEGRAM_BOT_TOKEN=your_telegram_token
 | 变量 | 必需 | 说明 |
 |------|------|------|
 | `API_SERVER_ENABLED` | ✅ 是 | 必须设为 `true`，启用 API Server 平台以提供健康检查端点 |
+| `HERMES_UID` | 推荐 | 宿主机 UID（确保容器内文件权限与宿主机一致） |
+| `HERMES_GID` | 推荐 | 宿主机 GID |
 | `ANTHROPIC_API_KEY` | 推荐 | Anthropic API 密钥（或其他 LLM 提供商的密钥） |
 | `TELEGRAM_BOT_TOKEN` | 可选 | Telegram 机器人 Token（启用 Telegram 平台） |
 | `DISCORD_BOT_TOKEN` | 可选 | Discord 机器人 Token（启用 Discord 平台） |
@@ -210,13 +214,12 @@ TELEGRAM_BOT_TOKEN=your_telegram_token
 - 记忆和技能
 - 数据库文件
 
-#### 资源限制
+#### 网络模式
 
-`docker-compose.yml` 已预设资源限制：
-- **Gateway**: 最大 4GB 内存, 2 CPU
-- **Dashboard**: 最大 512MB 内存, 0.5 CPU
-
-可根据需要调整 `deploy.resources.limits` 配置。
+当前使用 `network_mode: host`，容器直接共享宿主机网络栈：
+- 无需端口映射（`-p` 参数），直接使用宿主机端口
+- Gateway 监听 `0.0.0.0:8642`
+- Dashboard 监听 `127.0.0.1:9119`（安全考虑）
 
 ### 开发模式
 
@@ -226,7 +229,7 @@ TELEGRAM_BOT_TOKEN=your_telegram_token
 # 创建 docker-compose.override.yml 用于开发
 cat > docker-compose.override.yml << 'EOF'
 services:
-  hermes:
+  gateway:
     volumes:
       - .:/opt/hermes:ro
       - ~/.hermes:/opt/data
@@ -243,8 +246,8 @@ docker compose up -d --build
 **常见问题：**
 
 1. **Dashboard 显示 "gateway not running"**
-   - 确认 `API_SERVER_ENABLED=true` 已设置在 hermes 服务的环境变量中
-   - 检查 Gateway 容器是否正常运行：`docker compose ps hermes`
+   - 确认 `API_SERVER_ENABLED=true` 已设置在 gateway 服务的环境变量中
+   - 检查 Gateway 容器是否正常运行：`docker compose ps gateway`
    - 测试健康检查端点：`curl http://localhost:8642/health`
    - 如果返回 `{"status":"ok"}` 说明 Gateway 正常，问题在 Dashboard 的 `GATEWAY_HEALTH_URL` 配置
 
@@ -253,6 +256,9 @@ docker compose up -d --build
    # 确保 ~/.hermes 目录存在且权限正确
    mkdir -p ~/.hermes
    chmod 755 ~/.hermes
+   
+   # 设置正确的 UID/GID（避免 rootless Podman 权限问题）
+   HERMES_UID=$(id -u) HERMES_GID=$(id -g) docker compose up -d
    ```
 
 3. **端口冲突**
@@ -260,8 +266,6 @@ docker compose up -d --build
    # 检查端口是否被占用
    lsof -i :8642
    lsof -i :9119
-   
-   # 或修改 docker-compose.yml 中的端口映射
    ```
 
 4. **构建失败**
@@ -274,7 +278,7 @@ docker compose up -d --build
 5. **查看容器日志**
    ```bash
    # 实时查看 gateway 日志
-   docker compose logs -f hermes
+   docker compose logs -f gateway
    
    # 查看 dashboard 日志
    docker compose logs -f dashboard
@@ -355,14 +359,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv venv venv --python 3.11
 source venv/bin/activate
 uv pip install -e ".[all,dev]"
-python -m pytest tests/ -q
+scripts/run_tests.sh
 ```
 
-> **RL Training (optional):** To work on the RL/Tinker-Atropos integration:
-> ```bash
-> git submodule update --init tinker-atropos
-> uv pip install -e "./tinker-atropos"
-> ```
+> **RL Training (optional):** The RL/Atropos integration (`environments/`) ships via the `atroposlib` and `tinker` dependencies pulled in by `.[all,dev]` — no submodule setup required.
 
 ---
 
