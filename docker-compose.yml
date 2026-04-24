@@ -55,5 +55,7 @@ services:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
       - GATEWAY_HEALTH_URL=http://localhost:8642
-    # Localhost-only. For remote access, tunnel via `ssh -L 9119:localhost:9119`.
-    command: ["dashboard", "--host", "0.0.0.0", "--no-open"]
+    # Binds 0.0.0.0:9119 (LAN accessible). Requires --insecure because the
+    # dashboard exposes API keys without robust authentication.
+    # For production, use a reverse proxy with auth instead.
+    command: ["dashboard", "--host", "0.0.0.0", "--insecure", "--no-open"]

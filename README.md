@@ -163,7 +163,7 @@ docker run -d \
   hermes-agent:local \
   gateway run
 
-# 运行 Web Dashboard（默认绑定 127.0.0.1:9119）
+# 运行 Web Dashboard（绑定 0.0.0.0:9119，局域网可访问）
 docker run -d \
   --name hermes-dashboard \
   --restart unless-stopped \
@@ -171,12 +171,12 @@ docker run -d \
   -v ~/.hermes:/opt/data \
   -e GATEWAY_HEALTH_URL=http://localhost:8642 \
   hermes-agent:local \
-  dashboard --host 127.0.0.1 --no-open
+  dashboard --host 0.0.0.0 --no-open
 ```
 
 > **⚠️ 重要：** `API_SERVER_ENABLED=true` 是必须的。它启用 Gateway 内置的 API Server 平台，在 8642 端口提供 `/health` 健康检查端点。Dashboard 通过此端点检测 Gateway 是否运行。如果不设置此变量，Dashboard 将始终显示 "gateway not running"。
 
-> **🔒 安全提示：** Dashboard 默认绑定 `127.0.0.1:9119`（仅本机访问），因为它存储 API 密钥。如需远程访问，请使用 SSH 隧道（`ssh -L 9119:localhost:9119`）或反向代理添加认证层。
+> **🔒 安全提示：** Dashboard 当前绑定 `0.0.0.0:9119`（局域网可访问）。由于它存储 API 密钥，建议在内网中使用或通过防火墙限制访问来源。如需公网访问，请务必使用反向代理添加认证层。
 
 ### 配置说明
 
