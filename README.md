@@ -242,14 +242,20 @@ docker compose up -d --build
 
 **常见问题：**
 
-1. **权限错误**
+1. **Dashboard 显示 "gateway not running"**
+   - 确认 `API_SERVER_ENABLED=true` 已设置在 hermes 服务的环境变量中
+   - 检查 Gateway 容器是否正常运行：`docker compose ps hermes`
+   - 测试健康检查端点：`curl http://localhost:8642/health`
+   - 如果返回 `{"status":"ok"}` 说明 Gateway 正常，问题在 Dashboard 的 `GATEWAY_HEALTH_URL` 配置
+
+2. **权限错误**
    ```bash
    # 确保 ~/.hermes 目录存在且权限正确
    mkdir -p ~/.hermes
    chmod 755 ~/.hermes
    ```
 
-2. **端口冲突**
+3. **端口冲突**
    ```bash
    # 检查端口是否被占用
    lsof -i :8642
@@ -258,14 +264,14 @@ docker compose up -d --build
    # 或修改 docker-compose.yml 中的端口映射
    ```
 
-3. **构建失败**
+4. **构建失败**
    ```bash
    # 清理 Docker 构建缓存后重新构建
    docker builder prune -f
    docker compose build --no-cache
    ```
 
-4. **查看容器日志**
+5. **查看容器日志**
    ```bash
    # 实时查看 gateway 日志
    docker compose logs -f hermes
