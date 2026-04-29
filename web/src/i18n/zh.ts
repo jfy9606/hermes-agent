@@ -52,6 +52,7 @@ export const zh: Translations = {
     brand: "Hermes Agent",
     brandShort: "HA",
     closeNavigation: "关闭导航",
+    closeModelTools: "关闭模型与工具",
     footer: {
       org: "Nous Research",
     },
@@ -66,6 +67,7 @@ export const zh: Translations = {
     },
     nav: {
       analytics: "分析",
+      chat: "对话",
       config: "配置",
       cron: "定时任务",
       documentation: "文档",
@@ -74,6 +76,8 @@ export const zh: Translations = {
       sessions: "会话",
       skills: "技能",
     },
+    modelToolsSheetSubtitle: "与工具",
+    modelToolsSheetTitle: "模型",
     navigation: "导航",
     openDocumentation: "在新标签页中打开文档",
     openNavigation: "打开导航",
@@ -129,6 +133,7 @@ export const zh: Translations = {
     confirmDeleteMessage: "此操作将永久删除对话及其所有消息，无法恢复。",
     sessionDeleted: "会话已删除",
     failedToDelete: "删除会话失败",
+    resumeInChat: "在对话中继续",
     previousPage: "上一页",
     nextPage: "下一页",
     roles: {
@@ -229,6 +234,9 @@ export const zh: Translations = {
     exportConfig: "导出配置为 JSON",
     importConfig: "从 JSON 导入配置",
     resetDefaults: "恢复默认值",
+    resetScopeTooltip: "将{scope}恢复为默认值",
+    confirmResetScope: "确定要将{scope}的所有设置恢复为默认值吗？此操作仅更新表单，在按下「保存」按钮前不会写入 config.yaml。",
+    resetScopeToast: "{scope}已恢复为默认值 — 请检查并保存以生效",
     rawYaml: "原始 YAML 配置",
     searchResults: "搜索结果",
     fields: "个字段",
