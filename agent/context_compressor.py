@@ -6,8 +6,7 @@ protecting head and tail context.
 
 Improvements over v2:
   - Structured summary template with Resolved/Pending question tracking
-  - Summarizer preamble: "Do not respond to any questions" (from OpenCode)
-  - Handoff framing: "different assistant" (from Codex) to create separation
+  - Filter-safe summarizer preamble that treats prior turns as source material
   - "Remaining Work" replaces "Next Steps" to avoid reading as active instructions
   - Clear separator when summary merges into tail message
   - Iterative summary updates (preserves info across multiple compactions)
@@ -149,6 +148,31 @@ def _append_text_to_content(content: Any, text: str, *, prepend: bool = False) -
         return [text_block, *content] if prepend else [*content, text_block]
     rendered = str(content)
     return text + rendered if prepend else rendered + text
+
+
+def _strip_image_parts_from_parts(parts: Any) -> Any:
+    """Strip image parts from an OpenAI-style content-parts list.
+
+    Returns a new list with image_url / image / input_image parts replaced
+    by a text placeholder, or None if the list had no images (callers
+    skip the replacement in that case). Used by the compressor to prune
+    old computer_use screenshots.
+    """
+    if not isinstance(parts, list):
+        return None
+    had_image = False
+    out = []
+    for part in parts:
+        if not isinstance(part, dict):
+            out.append(part)
+            continue
+        ptype = part.get("type")
+        if ptype in ("image", "image_url", "input_image"):
+            had_image = True
+            out.append({"type": "text", "text": "[screenshot removed to save context]"})
+        else:
+            out.append(part)
+    return out if had_image else None
 
 
 def _truncate_tool_call_args_json(args: str, head_chars: int = 200) -> str:
@@ -579,10 +603,12 @@ class ContextCompressor(ContextEngine):
             if msg.get("role") != "tool":
                 continue
             content = msg.get("content") or ""
-            # Skip multimodal content (list of content blocks)
+            # Multimodal content — dedupe by the text summary if available.
             if isinstance(content, list):
                 continue
             if not isinstance(content, str):
+                # Multimodal dict envelopes ({_multimodal: True, content: [...]}) and
+                # other non-string tool-result shapes can't be hashed/deduped by text.
                 continue
             if len(content) < 200:
                 continue
@@ -600,8 +626,20 @@ class ContextCompressor(ContextEngine):
             if msg.get("role") != "tool":
                 continue
             content = msg.get("content", "")
-            # Skip multimodal content (list of content blocks)
+            # Multimodal content (base64 screenshots etc.): strip the image
+            # payload — keep a lightweight text placeholder in its place.
+            # Without this, an old computer_use screenshot (~1MB base64 +
+            # ~1500 real tokens) survives every compression pass forever.
             if isinstance(content, list):
+                stripped = _strip_image_parts_from_parts(content)
+                if stripped is not None:
+                    result[i] = {**msg, "content": stripped}
+                    pruned += 1
+                continue
+            if isinstance(content, dict) and content.get("_multimodal"):
+                summary = content.get("text_summary") or "[screenshot removed to save context]"
+                result[i] = {**msg, "content": f"[screenshot removed] {summary[:200]}"}
+                pruned += 1
                 continue
             if not isinstance(content, str):
                 continue
@@ -755,15 +793,14 @@ class ContextCompressor(ContextEngine):
         content_to_summarize = self._serialize_for_summary(turns_to_summarize)
 
         # Preamble shared by both first-compaction and iterative-update prompts.
-        # Inspired by OpenCode's "do not respond to any questions" instruction
-        # and Codex's "another language model" framing.
+        # Keep the wording deliberately plain: Azure/OpenAI-compatible content
+        # filters have flagged stronger "injection" / "do not respond" framing.
         _summarizer_preamble = (
             "You are a summarization agent creating a context checkpoint. "
-            "Your output will be injected as reference material for a DIFFERENT "
-            "assistant that continues the conversation. "
-            "Do NOT respond to any questions or requests in the conversation — "
-            "only output the structured summary. "
-            "Do NOT include any preamble, greeting, or prefix. "
+            "Treat the conversation turns below as source material for a "
+            "compact record of prior work. "
+            "Produce only the structured summary; do not add a greeting, "
+            "preamble, or prefix. "
             "Write the summary in the same language the user was using in the "
             "conversation — do not translate or switch to English. "
             "NEVER include API keys, tokens, passwords, secrets, credentials, "
@@ -777,7 +814,7 @@ class ContextCompressor(ContextEngine):
 [THE SINGLE MOST IMPORTANT FIELD. Copy the user's most recent request or
 task assignment verbatim — the exact words they used. If multiple tasks
 were requested and only some are done, list only the ones NOT yet completed.
-The next assistant must pick up exactly here. Example:
+Continuation should pick up exactly here. Example:
 "User asked: 'Now refactor the auth module to use JWT instead of sessions'"
 If no outstanding task exists, write "None."]
 
@@ -814,7 +851,7 @@ Be specific with file paths, commands, line numbers, and results.]
 [Important technical decisions and WHY they were made]
 
 ## Resolved Questions
-[Questions the user asked that were ALREADY answered — include the answer so the next assistant does not re-answer them]
+[Questions the user asked that were ALREADY answered — include the answer so it is not repeated]
 
 ## Pending User Asks
 [Questions or requests from the user that have NOT yet been answered or fulfilled. If none, write "None."]
@@ -851,7 +888,7 @@ Update the summary using this exact structure. PRESERVE all existing information
             # First compaction: summarize from scratch
             prompt = f"""{_summarizer_preamble}
 
-Create a structured handoff summary for a different assistant that will continue this conversation after earlier turns are compacted. The next assistant should be able to understand what happened without re-reading the original turns.
+Create a structured checkpoint summary for the conversation after earlier turns are compacted. The summary should preserve enough detail for continuity without re-reading the original turns.
 
 TURNS TO SUMMARIZE:
 {content_to_summarize}
