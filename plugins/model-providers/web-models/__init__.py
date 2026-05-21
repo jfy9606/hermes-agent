@@ -1,0 +1,91 @@
+"""
+Zero Token Web Models Provider Plugin
+
+This plugin registers web-based AI model providers that use browser sessions
+(cookies) for authentication, eliminating the need for API keys.
+
+Supported providers:
+- Claude Web (claude.ai)
+- ChatGPT Web (chatgpt.com)
+- DeepSeek Web (chat.deepseek.com)
+- Doubao Web (doubao.com)
+- Gemini Web (gemini.google.com)
+- GLM Web (chatglm.cn)
+- Grok Web (grok.com)
+- Kimi Web (kimi.com)
+- Qwen Web (chat.qwen.ai)
+"""
+
+import logging
+from typing import Dict, List, Optional
+
+try:
+    from providers import register_provider
+    from providers.base import ProviderProfile
+    PROVIDERS_SYSTEM_AVAILABLE = True
+except ImportError:
+    PROVIDERS_SYSTEM_AVAILABLE = False
+
+from web_models.config import WEB_PROVIDERS_CONFIG
+from web_models.auth import WebAuthManager
+
+logger = logging.getLogger(__name__)
+
+
+def register_web_model_providers() -> None:
+    """Register all Zero Token web model providers with Hermes."""
+    if not PROVIDERS_SYSTEM_AVAILABLE:
+        logger.warning("[WebModels] Provider registration system not available")
+        return
+
+    for provider_id, config in WEB_PROVIDERS_CONFIG.items():
+        try:
+            profile = ProviderProfile(
+                name=provider_id,
+                aliases=(
+                    f"{config['name'].lower().replace(' ', '-')}-web",
+                    config.get("alias", ""),
+                ),
+                env_vars=(),
+                display_name=config["name"],
+                description=f"{config['description']} (Zero Token - no API key required)",
+                signup_url=config.get("auth_url", ""),
+                fallback_models=(config["default_model"],),
+                base_url=config["base_url"],
+            )
+
+            register_provider(profile)
+            logger.info(f"[WebModels] Registered provider: {provider_id}")
+
+        except Exception as e:
+            logger.error(f"[WebModels] Failed to register {provider_id}: {e}")
+
+
+def get_auth_manager() -> WebAuthManager:
+    """Get the authentication manager instance."""
+    return WebAuthManager()
+
+
+def list_available_providers() -> List[Dict]:
+    """List all available web model providers with their configurations."""
+    return [
+        {
+            "id": provider_id,
+            **config,
+        }
+        for provider_id, config in WEB_PROVIDERS_CONFIG.items()
+    ]
+
+
+def is_provider_authenticated(provider_id: str) -> bool:
+    """Check if a provider has valid authentication."""
+    manager = get_auth_manager()
+    return manager.has_auth(provider_id)
+
+
+# Auto-register on import
+if __name__ != "__main__":
+    try:
+        register_web_model_providers()
+    except Exception as e:
+        logger.error(f"[WebModels] Auto-registration failed: {e}")

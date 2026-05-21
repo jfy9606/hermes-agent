@@ -1,0 +1,26 @@
+name: web-models-provider
+kind: model-provider
+version: 1.0.0
+description: Zero Token Web Models - Browser-based AI model access without API keys
+author: Hermes Agent Community
+
+# Zero Token allows accessing AI models through browser sessions (cookies)
+# instead of API keys, enabling free usage of:
+# - Claude Web (claude.ai)
+# - ChatGPT Web (chatgpt.com)
+# - DeepSeek Web (chat.deepseek.com)
+# - And 6 more providers
+
+supported-providers:
+  - claude-web
+  - chatgpt-web
+  - deepseek-web
+  - doubao-web
+  - gemini-web
+  - glm-web
+  - grok-web
+  - kimi-web
+  - qwen-web
+
+auth-type: browser_session
+cost: zero
