@@ -933,7 +933,7 @@ class PluginManager:
         #   - flat: ``plugins/disk-cleanup/plugin.yaml`` (standalone)
         #   - category: ``plugins/image_gen/openai/plugin.yaml`` (backend)
         #
-        # ``memory/``, ``context_engine/``, and ``model-providers/`` are
+        # ``memory/``, ``context_engine/``, and ``model_providers/`` are
         # skipped at the top level — they have their own discovery systems
         # (plugins/memory/__init__.py, providers/__init__.py). ``platforms/``
         # is a category holding platform adapters (scanned one level deeper
@@ -943,7 +943,7 @@ class PluginManager:
         bundled = self._scan_directory(
             repo_plugins,
             source="bundled",
-            skip_names={"memory", "context_engine", "platforms", "model-providers"},
+            skip_names={"memory", "context_engine", "platforms", "model_providers"},
         )
         logger.debug("  bundled (top-level): %d manifest(s)", len(bundled))
         manifests.extend(bundled)

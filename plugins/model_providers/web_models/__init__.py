@@ -26,8 +26,8 @@ try:
 except ImportError:
     PROVIDERS_SYSTEM_AVAILABLE = False
 
-from web_models.config import WEB_PROVIDERS_CONFIG
-from web_models.auth import WebAuthManager
+from .config import WEB_PROVIDERS_CONFIG
+from .auth import WebAuthManager
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,7 @@ def register_web_model_providers() -> None:
                 signup_url=config.get("auth_url", ""),
                 fallback_models=(config["default_model"],),
                 base_url=config["base_url"],
+                auth_type="browser_session",
             )
 
             register_provider(profile)

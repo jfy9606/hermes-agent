@@ -3673,6 +3673,23 @@ def resolve_provider_client(
                        "directly supported, try 'auto'", provider)
         return None, None
 
+    elif pconfig.auth_type == "browser_session":
+        from hermes_cli.auth import resolve_browser_session_provider_credentials
+        from agent.web_model_adapter import WebModelAuxiliaryClient, AsyncWebModelAuxiliaryClient
+
+        creds = resolve_browser_session_provider_credentials(provider)
+        if creds.get("source") in {"missing", "missing_plugin"}:
+            logger.warning("resolve_provider_client: %s requested but %s",
+                           provider, creds.get("source"))
+            return None, None
+
+        default_model = _get_aux_model_for_provider(provider)
+        final_model = _normalize_resolved_model(model or default_model, provider)
+
+        client = WebModelAuxiliaryClient(provider, final_model)
+        logger.debug("resolve_provider_client: web-model %s (%s)", provider, final_model)
+        return (AsyncWebModelAuxiliaryClient(client) if async_mode else (client, final_model))
+
     logger.warning("resolve_provider_client: unhandled auth_type %s for %s",
                    pconfig.auth_type, provider)
     return None, None

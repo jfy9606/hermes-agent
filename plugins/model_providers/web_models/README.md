@@ -9,7 +9,7 @@ This plugin integrates **Zero Token** functionality into Hermes Agent's **Plugin
 ## Architecture (Correct Pattern) ✅
 
 ```
-plugins/model-providers/web-models/    # ✅ Follows Hermes plugin conventions
+plugins/model_providers/web_models/    # ✅ Follows Hermes plugin conventions
 ├── __init__.py                        #    register_provider() for all 9 providers
 ├── plugin.yaml                        #    Plugin metadata
 ├── config.py                          #    Provider configurations
@@ -39,7 +39,7 @@ zerotoken/           # ❌ Independent top-level package
 
 ### ✅ Correct Approach (Current)
 ```bash
-plugins/model-providers/web-models/   # ✅ Standard plugin location
+plugins/model_providers/web_models/   # ✅ Standard plugin location
 ├── __init__.py                       #    Auto-discovered and loaded
 └── plugin.yaml                       #    Proper metadata
 ```
@@ -47,7 +47,7 @@ plugins/model-providers/web-models/   # ✅ Standard plugin location
 **Benefits:**
 - ✅ Auto-registered with `providers.register_provider()`
 - ✅ Appears in `hermes models` / `hermes tools` output
-- ✅ Follows same pattern as `anthropic`, `deepseek`, `openai-codex`, etc.
+- ✅ Follows same pattern as `anthropic`, `deepseek`, `openai_codex`, etc.
 - ✅ Consistent with Hermes AGENTS.md specifications
 - ✅ Can be enabled/disabled like any other plugin
 
@@ -71,7 +71,7 @@ plugins/model-providers/web-models/   # ✅ Standard plugin location
 
 ```bash
 cd /home/jfy/hermes-agent
-python -m plugins.model_providers.web_models.cli list
+python3 -m plugins.model_providers.web_models.cli list
 ```
 
 ### 2. Authenticate
@@ -79,25 +79,25 @@ python -m plugins.model_providers.web_models.cli list
 **Option A: Direct Cookie**
 
 ```bash
-python -m plugins.model_providers.web_models.cli auth claude-web --cookie <sessionKey>
+python3 -m plugins.model_providers.web_models.cli auth claude-web --cookie <sessionKey>
 ```
 
 **Option B: Get Instructions**
 
 ```bash
-python -m plugins.model_providers.web_models.cli auth claude-web
+python3 -m plugins.model_providers.web_models.cli auth claude-web
 ```
 
 ### 3. Check Status
 
 ```bash
-python -m plugins.model_providers.web_models.cli status
+python3 -m plugins.model_providers.web_models.cli status
 ```
 
 ### 4. Test Connection
 
 ```bash
-python -m plugins.model_providers.web_models.cli test claude-web
+python3 -m plugins.model_providers.web_models.cli test claude-web
 ```
 
 ## Usage in Python

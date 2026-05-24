@@ -1,8 +1,8 @@
-"""Tests for the model-providers plugin discovery system.
+"""Tests for the model_providers plugin discovery system.
 
 Verifies that:
- 1. All bundled providers at plugins/model-providers/<name>/ are discovered
- 2. User plugins at $HERMES_HOME/plugins/model-providers/<name>/ override bundled
+ 1. All bundled providers at plugins/model_providers/<name>/ are discovered
+ 2. User plugins at $HERMES_HOME/plugins/model_providers/<name>/ override bundled
  3. plugin.yaml manifests with kind=model-provider are correctly categorized
 """
 
@@ -34,8 +34,8 @@ def _clear_provider_caches():
 
 
 def test_bundled_plugins_discovered():
-    """Every plugins/model-providers/<name>/ should contain a plugin.yaml + __init__.py."""
-    plugins_dir = REPO_ROOT / "plugins" / "model-providers"
+    """Every plugins/model_providers/<name>/ should contain a plugin.yaml + __init__.py."""
+    plugins_dir = REPO_ROOT / "plugins" / "model_providers"
     assert plugins_dir.is_dir(), f"Missing {plugins_dir}"
 
     child_dirs = [c for c in plugins_dir.iterdir() if c.is_dir()]
@@ -73,7 +73,7 @@ def test_user_plugin_overrides_bundled(tmp_path, monkeypatch):
     # env var is the source of truth. Most code paths re-read it each call.
 
     # Drop a user plugin that replaces 'gmi'
-    user_gmi = hermes_home / "plugins" / "model-providers" / "gmi"
+    user_gmi = hermes_home / "plugins" / "model_providers" / "gmi"
     user_gmi.mkdir(parents=True)
     (user_gmi / "__init__.py").write_text(
         "from providers import register_provider\n"

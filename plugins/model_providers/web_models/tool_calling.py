@@ -218,9 +218,15 @@ def _format_tool_definitions(tools: List[Dict]) -> str:
 
     defs = []
     for tool in tools:
-        name = tool.get("name", "unknown")
-        description = tool.get("description", "No description")
-        params = tool.get("parameters", {})
+        # Handle both styles: {"name": "..."} and {"type": "function", "function": {"name": "..."}}
+        if "function" in tool and isinstance(tool["function"], dict):
+            target = tool["function"]
+        else:
+            target = tool
+
+        name = target.get("name", "unknown")
+        description = target.get("description", "No description")
+        params = target.get("parameters", {})
 
         param_str = ""
         if params.get("properties"):

@@ -13,7 +13,7 @@ try:
 except ImportError:
     httpx = None
 
-from web_models.base import WebModelAuth, StreamChunk, WebModelClient
+from ..base import WebModelAuth, StreamChunk, WebModelClient
 
 logger = logging.getLogger(__name__)
 

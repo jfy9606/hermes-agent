@@ -13,9 +13,9 @@ import asyncio
 import sys
 from typing import Optional
 
-from web_models.config import WEB_PROVIDERS_CONFIG
-from web_models.auth import WebAuthManager, get_cookie_instructions
-from web_models.base import WebModelAuth
+from .config import WEB_PROVIDERS_CONFIG
+from .auth import WebAuthManager, get_cookie_instructions
+from .base import WebModelAuth
 
 
 def cmd_list(args) -> int:

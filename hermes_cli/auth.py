@@ -464,7 +464,9 @@ try:
     for _pp in _list_providers_for_registry():
         if _pp.name in PROVIDER_REGISTRY:
             continue
-        if _pp.auth_type != "api_key" or not _pp.env_vars:
+        if _pp.auth_type not in {"api_key", "browser_session"}:
+            continue
+        if _pp.auth_type == "api_key" and not _pp.env_vars:
             continue
         # Skip providers that need custom token resolution or are special-cased
         # in resolve_provider() (copilot/kimi/zai have bespoke token refresh;
@@ -478,7 +480,7 @@ try:
         PROVIDER_REGISTRY[_pp.name] = ProviderConfig(
             id=_pp.name,
             name=_pp.display_name or _pp.name,
-            auth_type="api_key",
+            auth_type=_pp.auth_type,
             inference_base_url=_pp.base_url,
             api_key_env_vars=_api_key_vars or _pp.env_vars,
             base_url_env_var=_base_url_var or "",
@@ -5852,6 +5854,44 @@ def resolve_api_key_provider_credentials(provider_id: str) -> Dict[str, Any]:
         "base_url": base_url.rstrip("/"),
         "source": key_source or "default",
     }
+
+
+def resolve_browser_session_provider_credentials(provider_id: str) -> Dict[str, Any]:
+    """Resolve browser session credentials for a web model provider."""
+    pconfig = PROVIDER_REGISTRY.get(provider_id)
+    if not pconfig or pconfig.auth_type != "browser_session":
+        raise AuthError(
+            f"Provider '{provider_id}' is not a browser-session provider.",
+            provider=provider_id,
+            code="invalid_provider",
+        )
+
+    try:
+        from plugins.model_providers.web_models.auth import WebAuthManager
+        manager = WebAuthManager()
+        auth_data = manager.get_auth(provider_id)
+        if not auth_data:
+            return {
+                "provider": provider_id,
+                "api_key": "",
+                "base_url": pconfig.inference_base_url,
+                "source": "missing",
+            }
+        
+        return {
+            "provider": provider_id,
+            "api_key": "web-session",
+            "base_url": pconfig.inference_base_url,
+            "source": "browser_session",
+            "auth_data": auth_data,
+        }
+    except ImportError:
+        return {
+            "provider": provider_id,
+            "api_key": "",
+            "base_url": pconfig.inference_base_url,
+            "source": "missing_plugin",
+        }
 
 
 def resolve_external_process_provider_credentials(provider_id: str) -> Dict[str, Any]:

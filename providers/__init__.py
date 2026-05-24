@@ -2,8 +2,8 @@
 
 Provider profiles can live in two places:
 
-1. Bundled plugins: ``plugins/model-providers/<name>/`` (shipped with hermes-agent)
-2. User plugins: ``$HERMES_HOME/plugins/model-providers/<name>/``
+1. Bundled plugins: ``plugins/model_providers/<name>/`` (shipped with hermes-agent)
+2. User plugins: ``$HERMES_HOME/plugins/model_providers/<name>/``
 
 Each plugin directory contains:
   - ``__init__.py`` — calls ``register_provider(profile)`` at import
@@ -44,9 +44,9 @@ _REGISTRY: dict[str, ProviderProfile] = {}
 _ALIASES: dict[str, str] = {}
 _discovered = False
 
-# Repo-root ``plugins/model-providers/`` — populated at discovery time.
+# Repo-root ``plugins/model_providers/`` — populated at discovery time.
 _BUNDLED_PLUGINS_DIR = (
-    Path(__file__).resolve().parent.parent / "plugins" / "model-providers"
+    Path(__file__).resolve().parent.parent / "plugins" / "model_providers"
 )
 
 
@@ -54,7 +54,7 @@ def register_provider(profile: ProviderProfile) -> None:
     """Register a provider profile by name and aliases.
 
     Later registrations with the same name replace earlier ones — so user
-    plugins under ``$HERMES_HOME/plugins/model-providers/`` can override
+    plugins under ``$HERMES_HOME/plugins/model_providers/`` can override
     bundled profiles without editing repo code.
     """
     _REGISTRY[profile.name] = profile
@@ -89,11 +89,11 @@ def list_providers() -> list[ProviderProfile]:
 
 
 def _user_plugins_dir() -> Path | None:
-    """Return ``$HERMES_HOME/plugins/model-providers/`` if it exists."""
+    """Return ``$HERMES_HOME/plugins/model_providers/`` if it exists."""
     try:
         from hermes_constants import get_hermes_home
 
-        d = get_hermes_home() / "plugins" / "model-providers"
+        d = get_hermes_home() / "plugins" / "model_providers"
         return d if d.is_dir() else None
     except Exception:
         return None
@@ -160,7 +160,7 @@ def _discover_providers() -> None:
                 continue
             _import_plugin_dir(child, "bundled")
 
-    # 2. User plugins — under $HERMES_HOME/plugins/model-providers/<name>/.
+    # 2. User plugins — under $HERMES_HOME/plugins/model_providers/<name>/.
     #    These can override any bundled profile of the same name (last-writer-wins
     #    in register_provider()).
     user_dir = _user_plugins_dir()
