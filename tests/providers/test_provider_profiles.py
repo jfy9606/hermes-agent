@@ -1,6 +1,11 @@
 """Tests for the provider module registry and profiles."""
 
-from providers import get_provider_profile, _REGISTRY
+from providers import (
+    _REGISTRY,
+    get_provider_module_name,
+    get_provider_profile,
+    import_provider_submodule,
+)
 from providers.base import ProviderProfile, OMIT_TEMPERATURE
 
 
@@ -26,6 +31,21 @@ class TestRegistry:
         get_provider_profile("nvidia")  # trigger discovery
         for name, profile in _REGISTRY.items():
             assert profile.name == name
+
+    def test_provider_module_lookup_uses_canonical_plugin_module(self):
+        assert get_provider_module_name("kimi") == "plugins.model_providers.kimi_coding"
+        assert get_provider_module_name("claude-web") == "plugins.model_providers.web_models"
+
+    def test_import_provider_submodule_resolves_from_registered_plugin(self):
+        mod = import_provider_submodule("claude-web", "config")
+        assert mod.WEB_PROVIDERS_CONFIG["claude-web"]["name"] == "Claude Web"
+
+    def test_web_models_only_register_implemented_providers(self):
+        from plugins.model_providers.web_models import list_available_providers
+
+        assert get_provider_profile("claude-web") is not None
+        assert get_provider_profile("chatgpt-web") is None
+        assert [provider["id"] for provider in list_available_providers()] == ["claude-web"]
 
 
 class TestNvidiaProfile:

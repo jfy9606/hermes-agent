@@ -36,7 +36,13 @@ def test_bundled_plugins_discovered():
     plugins_dir = REPO_ROOT / "plugins" / "model_providers"
     assert plugins_dir.is_dir(), f"Missing {plugins_dir}"
 
-    child_dirs = [c for c in plugins_dir.iterdir() if c.is_dir()]
+    child_dirs = [
+        c
+        for c in plugins_dir.iterdir()
+        if c.is_dir()
+        and not c.name.startswith(("_", "."))
+        and (c / "plugin.yaml").exists()
+    ]
     assert len(child_dirs) >= 28, f"Expected at least 28 provider plugins, found {len(child_dirs)}"
 
     for child in child_dirs:
@@ -54,8 +60,14 @@ def test_all_profiles_register():
     _clear_provider_caches()
     from providers import list_providers
 
-    plugins_dir = REPO_ROOT / "plugins" / "model-providers"
-    plugin_dir_count = sum(1 for c in plugins_dir.iterdir() if c.is_dir())
+    plugins_dir = REPO_ROOT / "plugins" / "model_providers"
+    plugin_dir_count = sum(
+        1
+        for c in plugins_dir.iterdir()
+        if c.is_dir()
+        and not c.name.startswith(("_", "."))
+        and (c / "plugin.yaml").exists()
+    )
 
     profiles = list_providers()
     names = sorted(p.name for p in profiles)

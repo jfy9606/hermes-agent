@@ -9,6 +9,8 @@ WEB_PROVIDERS_CONFIG: Dict[str, Dict[str, Any]] = {
         "name": "Claude Web",
         "base_url": "https://claude.ai",
         "default_model": "claude-sonnet-4-6",
+        "client_module": "clients.claude_web",
+        "client_class": "ClaudeWebClient",
         "context_window": 200000,
         "max_tokens": 8192,
         "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},

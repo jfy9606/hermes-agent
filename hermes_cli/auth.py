@@ -6243,8 +6243,10 @@ def resolve_browser_session_provider_credentials(provider_id: str) -> Dict[str, 
         )
 
     try:
-        from plugins.model_providers.web_models.auth import WebAuthManager
-        manager = WebAuthManager()
+        from providers import import_provider_submodule
+
+        auth_mod = import_provider_submodule(provider_id, "auth")
+        manager = auth_mod.WebAuthManager()
         auth_data = manager.get_auth(provider_id)
         if not auth_data:
             return {

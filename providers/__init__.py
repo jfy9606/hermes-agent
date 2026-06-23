@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import inspect
 import logging
 import sys
 from pathlib import Path
@@ -42,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 _REGISTRY: dict[str, ProviderProfile] = {}
 _ALIASES: dict[str, str] = {}
+_PROVIDER_MODULES: dict[str, str] = {}
 _discovered = False
 
 # Repo-root ``plugins/model_providers/`` — populated at discovery time.
@@ -57,7 +59,13 @@ def register_provider(profile: ProviderProfile) -> None:
     plugins under ``$HERMES_HOME/plugins/model_providers/`` can override
     bundled profiles without editing repo code.
     """
+    caller_frame = inspect.currentframe().f_back
+    module_name = ""
+    if caller_frame is not None:
+        module_name = str(caller_frame.f_globals.get("__name__", "") or "")
     _REGISTRY[profile.name] = profile
+    if module_name:
+        _PROVIDER_MODULES[profile.name] = module_name
     for alias in profile.aliases:
         _ALIASES[alias] = profile.name
 
@@ -86,6 +94,24 @@ def list_providers() -> list[ProviderProfile]:
             seen.add(pid)
             result.append(profile)
     return result
+
+
+def get_provider_module_name(name: str) -> str | None:
+    """Return the plugin module that registered *name* or one of its aliases."""
+    if not _discovered:
+        _discover_providers()
+    canonical = _ALIASES.get(name, name)
+    return _PROVIDER_MODULES.get(canonical)
+
+
+def import_provider_submodule(name: str, submodule: str):
+    """Import ``<provider-plugin>.<submodule>`` for the provider or alias."""
+    if not submodule:
+        raise ValueError("submodule must be non-empty")
+    module_name = get_provider_module_name(name)
+    if not module_name:
+        raise ImportError(f"No registered plugin module for provider '{name}'")
+    return importlib.import_module(f"{module_name}.{submodule}")
 
 
 def _user_plugins_dir() -> Path | None:

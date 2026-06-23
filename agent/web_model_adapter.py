@@ -24,6 +24,21 @@ class WebModelAuxiliaryClient:
         self.base_url = f"web-model://{provider_id}"
         self.chat = SimpleNamespace(completions=self)
 
+    def _import_provider_submodule(self, submodule: str):
+        """Import a submodule from the plugin that registered this provider."""
+        try:
+            from providers import import_provider_submodule
+
+            return import_provider_submodule(self.provider_id, submodule)
+        except ImportError:
+            try:
+                from providers import _discover_providers, import_provider_submodule
+
+                _discover_providers()
+                return import_provider_submodule(self.provider_id, submodule)
+            except Exception:
+                return None
+
     def create(self, **kwargs):
         """Sync create() - collects all chunks and returns an OpenAI-like response."""
         if kwargs.get("stream"):
@@ -133,57 +148,46 @@ class WebModelAuxiliaryClient:
 
     def _get_tool_calling_module(self):
         """Helper to safely import the tool_calling module from the plugin."""
-        try:
-            # Try standard import first (works if providers._discover_providers() was called)
-            import sys
-            module_name = "plugins.model_providers.web_models.tool_calling"
-            if module_name in sys.modules:
-                return sys.modules[module_name]
-            
-            import importlib
-            return importlib.import_module(module_name)
-        except ImportError:
-            try:
-                # Manual discovery if not yet loaded
-                from providers import _discover_providers
-                _discover_providers()
-                import importlib
-                return importlib.import_module("plugins.model_providers.web_models.tool_calling")
-            except Exception:
-                return None
+        return self._import_provider_submodule("tool_calling")
 
     async def _get_client(self):
         try:
-            # Use dynamic import for WebAuthManager as well
-            import sys
-            auth_module_name = "plugins.model_providers.web_models.auth"
-            if auth_module_name not in sys.modules:
-                try:
-                    from providers import _discover_providers
-                    _discover_providers()
-                except Exception:
-                    pass
-            
-            import importlib
-            auth_mod = importlib.import_module(auth_module_name)
-            base_mod = importlib.import_module("plugins.model_providers.web_models.base")
-            
+            auth_mod = self._import_provider_submodule("auth")
+            base_mod = self._import_provider_submodule("base")
+            config_mod = self._import_provider_submodule("config")
+            if not auth_mod or not base_mod or not config_mod:
+                return None
+
             manager = auth_mod.WebAuthManager()
             auth_data = manager.get_auth(self.provider_id)
             if not auth_data:
                 return None
-            
+
             auth = base_mod.WebModelAuth.from_dict(auth_data)
-            
-            # Dynamic client loading
-            if self.provider_id == "claude-web":
-                client_mod = importlib.import_module("plugins.model_providers.web_models.clients.claude_web")
-                client = client_mod.ClaudeWebClient(auth)
-                await client.initialize()
-                return client
-            
-            # TODO: Add other clients here (ChatGPT, DeepSeek, etc.)
-            return None
+
+            provider_config = getattr(config_mod, "WEB_PROVIDERS_CONFIG", {}).get(
+                self.provider_id, {}
+            )
+            client_module_name = str(provider_config.get("client_module", "")).strip()
+            client_class_name = str(provider_config.get("client_class", "")).strip()
+            if not client_module_name or not client_class_name:
+                return None
+
+            client_mod = self._import_provider_submodule(client_module_name)
+            if not client_mod:
+                return None
+
+            client_cls = getattr(client_mod, client_class_name, None)
+            if client_cls is None:
+                return None
+
+            client = client_cls(auth)
+            initialize = getattr(client, "initialize", None)
+            if callable(initialize):
+                maybe_coro = initialize()
+                if asyncio.iscoroutine(maybe_coro):
+                    await maybe_coro
+            return client
         except Exception as e:
             logger.error(f"Failed to load web model client for {self.provider_id}: {e}")
             return None

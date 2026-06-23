@@ -1,23 +1,15 @@
 """
 Zero Token Web Models Provider Plugin
 
-This plugin registers web-based AI model providers that use browser sessions
-(cookies) for authentication, eliminating the need for API keys.
+This plugin hosts browser-session-backed model providers.
 
-Supported providers:
-- Claude Web (claude.ai)
-- ChatGPT Web (chatgpt.com)
-- DeepSeek Web (chat.deepseek.com)
-- Doubao Web (doubao.com)
-- Gemini Web (gemini.google.com)
-- GLM Web (chatglm.cn)
-- Grok Web (grok.com)
-- Kimi Web (kimi.com)
-- Qwen Web (chat.qwen.ai)
+Only providers with a concrete client implementation are registered into the
+main provider registry so unfinished entries do not leak into the global model
+picker/runtime path.
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 try:
     from providers import register_provider
@@ -32,20 +24,29 @@ from .auth import WebAuthManager
 logger = logging.getLogger(__name__)
 
 
+def _implemented_provider_configs() -> Dict[str, Dict]:
+    """Return only providers that declare a concrete client implementation."""
+    return {
+        provider_id: config
+        for provider_id, config in WEB_PROVIDERS_CONFIG.items()
+        if config.get("client_module") and config.get("client_class")
+    }
+
+
 def register_web_model_providers() -> None:
     """Register all Zero Token web model providers with Hermes."""
     if not PROVIDERS_SYSTEM_AVAILABLE:
         logger.warning("[WebModels] Provider registration system not available")
         return
 
-    for provider_id, config in WEB_PROVIDERS_CONFIG.items():
+    for provider_id, config in _implemented_provider_configs().items():
         try:
+            aliases = [f"{config['name'].lower().replace(' ', '-')}-web"]
+            if config.get("alias"):
+                aliases.append(config["alias"])
             profile = ProviderProfile(
                 name=provider_id,
-                aliases=(
-                    f"{config['name'].lower().replace(' ', '-')}-web",
-                    config.get("alias", ""),
-                ),
+                aliases=tuple(aliases),
                 env_vars=(),
                 display_name=config["name"],
                 description=f"{config['description']} (Zero Token - no API key required)",
@@ -74,7 +75,7 @@ def list_available_providers() -> List[Dict]:
             "id": provider_id,
             **config,
         }
-        for provider_id, config in WEB_PROVIDERS_CONFIG.items()
+        for provider_id, config in _implemented_provider_configs().items()
     ]
 
 
